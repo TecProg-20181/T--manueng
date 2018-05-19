@@ -92,22 +92,13 @@ def error(msg,chat):
 def validaint (letter):
   if not  letter in string.ascii_lowercase:
          return True  
-def recebevet(msg):
+def recebevet(chat,msg,command):
     i=0
     for letter in msg:
-
        if validaint(letter):
-          if i==0: 
-            msg2complemento=letter
-            print (msg2complemento)
-          else:
-             msg2complemento=letter
-          i=i+1         
-       else:
-          msgprincipal+=letter
-          print ("2")
-          print (msgprincipal)
-       return msg2complemento    
+          gerenciadordefuncoes(chat,letter,command)         
+
+                
 def lookupbank(query,task_id,chat):
     try:
       task = query.one()
@@ -276,7 +267,9 @@ def handle_updates(updates):
         chat = message["chat"]["id"]
         print (command)
         print(command, msg, chat)
-        recebevet(msg) 
+        recebevet(chat,msg,command)
+
+def gerenciadordefuncoes(chat,msg,command):
         if command == '/new':
             new(chat,msg)
         elif command == '/rename':
