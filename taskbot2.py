@@ -96,7 +96,10 @@ def recebevet(chat,msg,command):
     i=0
     for letter in msg:
        if validaint(letter):
-          gerenciadordefuncoes(chat,letter,command)         
+          gerenciadordefuncoes(chat,letter,command) 
+          i=1
+    if i==0:
+          gerenciadordefuncoes(chat,msg,command)                 
 
                 
 def lookupbank(query,task_id,chat):
@@ -115,17 +118,19 @@ def isvalid(msg,chat):
       else:
          return  False    
     else:
-       return False    
+       return False  
+def  printela(task,status,print2,chat):
+     task.status = status 
+     db.session.commit() 
+     send_message(print2.format(task.id, task.name), chat)              
 def status(msg,chat, status, print2):
      if(isvalid(msg,chat)):
         task_id=int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
         task=query.one()
      else:
-        return      
-     task.status = status 
-     db.session.commit() 
-     send_message(print2.format(task.id, task.name), chat)     
+        return  
+     printela(task,status,print2,chat)               
 def statusinform(command,msg,chat):
         if command == '/todo':
              status(msg,chat,'TODO',"*TODO* task [[{}]] {}")     
@@ -248,7 +253,8 @@ def new(chat,msg):
    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
    db.session.add(task)
    db.session.commit()
-   send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)                     
+   send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)  
+                      
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
