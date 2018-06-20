@@ -10,8 +10,16 @@ import sqlalchemy
 import db
 from db import Task
 
-TOKEN = "568885996:AAGZmsn-GCvgzu5ifwaoSVuLosiIiOkKX0Y"
+def lerarq():
+    arq=open('TOKEN.txt','r')
+    texto=arq.read()
+    texto2=texto.strip()
+    arq.close()
+    return texto2
+    
+TOKEN = lerarq()
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
+print(URL)
 
 HELP = """
  /new NOME
@@ -41,7 +49,9 @@ def get_updates(offset=None):
     url = URL + "getUpdates?timeout=100"
     if offset:
         url += "&offset={}".format(offset)
+    print (url)
     js = get_json_from_url(url)
+    print (js)
     return js
 
 def send_message(text, chat_id, reply_markup=None):
