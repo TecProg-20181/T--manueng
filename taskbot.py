@@ -9,17 +9,16 @@ import sqlalchemy
 
 import db
 from db import Task
-
 def lerarq():
-    arq=open('TOKEN.txt','r')
-    texto=arq.read()
-    texto2=texto.strip()
-    arq.close()
-    return texto2
+   arq=open('TOKEN.txt','r')
+   texto=arq.read()
+   texto2=texto.strip()
+   arq.close()
+   return texto2
     
 TOKEN = lerarq()
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-print(URL)
+
 
 HELP = """
  /new NOME
@@ -124,17 +123,36 @@ def status(msg,chat, status, print2):
      db.session.commit() 
      send_message(print2.format(task.id, task.name), chat)     
 def statusinform(command,msg,chat):
-        numbers=msg.split()
-        print(numbers)
-        for number in numbers:
-          if command == '/todo':
-             status(number,chat,'TODO',"*TODO* task [[{}]] {}")     
-          elif command == '/doing':
-             status(number,chat,'DOING',"*DOING* task [[{}]] {}")   
-          elif command == '/done':
-              status(number,chat,'DONE',"*DONE* task [[{}]] {}")    
-              
-def list(chat,msg):
+        numbers=msg.split()  
+        if(isvalid(numbers[0],chat)):
+         for number in numbers:
+            if command == '/todo':
+               status(number,chat,'TODO',"*TODO* task [[{}]] {}")     
+            elif command == '/doing':
+               status(number,chat,'DOING',"*DOING* task [[{}]] {}")   
+            elif command == '/done':
+               status(number,chat,'DONE',"*DONE* task [[{}]] {}")  
+        else:
+           return       
+def tasklist(a,a2,text,task,Task,data,chat):
+                a=[a,query]
+                a+='[[{}]] {}\n'.format(task.id,task.name)
+                a +=a2
+                a.add(a)
+                a.add(query) 
+                printdata(task.id,data,chat)
+                return a
+
+def tasklistpriority(a,a2,task,Task,data,chat):          
+       a += '[[{}]] {}\n'.format(task.id,task.name)
+         
+       a +=a2
+       print(task)
+       printdata(task.id,data,chat)
+       return a
+             
+
+def list(chat,msg,data):
             a = ''
             a += '\U0001F4CB Task List\n'
             query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
@@ -150,21 +168,23 @@ def list(chat,msg):
 
             send_message(a, chat)
             a = ''
-
+            a2={}
             a += '\U0001F4DD _Status_\n'
             query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
             a += '\n\U0001F195 *TODO*\n'
+            for task in query.all(): 
+               query = db.session.query(Task).filter_by(status='low', chat=chat).order_by(Task.id)      
+               send_message(task.priority,chat)
+               a=tasklistpriority(a,'\n\U000023FA *LOW*\n',task,Task,data,chat)
+            for task in query.all():
+               query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
+               a=tasklist(a,'\n\U000023FA *DOING*\n','DOING',task,Task,data,chat)    
+            for task in query.all():
+                query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)   
+                a=tasklist(a,'\n\U00002611 *DONE*\n','DONE',task,Task,data,chat)
             for task in query.all():
                 a += '[[{}]] {}\n'.format(task.id, task.name)
-            query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
-            a += '\n\U000023FA *DOING*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-            query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
-            a += '\n\U00002611 *DONE*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-
+                printdata(task.id,data,chat)
             send_message(a, chat)              
 def priority(chat,msg):
             text = ''
@@ -172,7 +192,7 @@ def priority(chat,msg):
                 if len(msg.split(' ', 1)) > 1:
                     text = msg.split(' ', 1)[1]
                 msg = msg.split(' ', 1)[0]
-
+            
             task_id=error(msg,chat)
             if(isvalid(msg,chat)):
                task_id=int(msg)
@@ -188,7 +208,7 @@ def priority(chat,msg):
                  send_message("The priority *must be* one of the following: high, medium, low", chat)
                else:
                  task.priority = text.lower()
-                 send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
+                 send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)    
                  db.session.commit()
 def duplicate(chat,msg):  
              if(isvalid(msg,chat)):
@@ -242,7 +262,30 @@ def delete(chat,msg):
                     t.parents = t.parents.replace('{},'.format(task.id), '')
                db.session.delete(task)
                db.session.commit()
-               send_message("Task [[{}]] deleted".format(task_id), chat)       
+               send_message("Task [[{}]] deleted".format(task_id), chat)
+def getdata(msg):
+    parts=msg.split() 
+    if(parts!=[]):
+      data=parts[0]
+    else:
+      data="0"
+    return data  
+def new(msg,chat):
+    data2=getdata(msg)  
+    send_message(data2,chat)
+    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
+    data={}
+    priority={}
+    db.session.add(task)
+    db.session.commit()
+    data[task.id]=data2
+    send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
+    printdata(task.id,data,chat)
+    return data;
+def printdata(id,data,chat):
+      if(id in data.keys()) :
+        send_message(data[id],chat)
+          
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
@@ -261,23 +304,20 @@ def handle_updates(updates):
         chat = message["chat"]["id"]
 
         print(command, msg, chat)
-
+        data={}
         if command == '/new':
-            task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
-            db.session.add(task)
-            db.session.commit()
-            send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
-
+            data=new(msg,chat)
+            print (data)   
         elif command == '/rename':
             rename(chat,msg)
         elif command == '/duplicate':
             duplicate(chat,msg)
         elif command == '/delete':
-              delete(chat,msg)
+            delete(chat,msg)
         elif(command=='/todo' or  command== '/doing' or command== '/done'):
             statusinform(command,msg,chat)
         elif command == '/list':
-             list(chat,msg)
+             list(chat,msg,data)
         elif command == '/dependson':
             text = ''
             if msg != '':
@@ -320,6 +360,7 @@ def handle_updates(updates):
               return 
         elif command == '/priority':
            priority(chat,msg)
+           
         elif command == '/start':
             send_message("Welcome! Here is a list of things you can do.", chat)
             send_message(HELP, chat)
