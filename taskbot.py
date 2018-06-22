@@ -117,22 +117,22 @@ def isvalid(msg,chat):
     else:
        return False    
 def status(msg,chat, status, print2):
-     if(isvalid(msg,chat)):
-        task_id=int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        task=query.one()
-     else:
-        return      
+     task_id=msg
+     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
+     task=query.one()     
      task.status = status 
      db.session.commit() 
      send_message(print2.format(task.id, task.name), chat)     
 def statusinform(command,msg,chat):
-        if command == '/todo':
-             status(msg,chat,'TODO',"*TODO* task [[{}]] {}")     
-        elif command == '/doing':
-             status(msg,chat,'DOING',"*DOING* task [[{}]] {}")   
-        elif command == '/done':
-              status(msg,chat,'DONE',"*DONE* task [[{}]] {}")    
+        numbers=msg.split()
+        print(numbers)
+        for number in numbers:
+          if command == '/todo':
+             status(number,chat,'TODO',"*TODO* task [[{}]] {}")     
+          elif command == '/doing':
+             status(number,chat,'DOING',"*DOING* task [[{}]] {}")   
+          elif command == '/done':
+              status(number,chat,'DONE',"*DONE* task [[{}]] {}")    
               
 def list(chat,msg):
             a = ''
