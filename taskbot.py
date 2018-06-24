@@ -34,7 +34,13 @@ HELP = """
  /priority ID PRIORITY{low, medium, high}
  /help
 """
-
+def getdata(msg):
+    parts=msg.split() 
+    if(parts!=[]):
+      data=parts[0]
+    else:
+      data="0"
+    return data 
 def get_url(url):
     response = requests.get(url)
     content = response.content.decode("utf8")
@@ -99,8 +105,9 @@ def error(msg,chat):
     else:
        task_id = int(msg)
     return task_id;
-def lookupbank(query,task_id,chat):
+def lookupbank(task_id,chat):
     try:
+      query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
       task = query.one()
       return True  
     except sqlalchemy.orm.exc.NoResultFound:
@@ -109,32 +116,30 @@ def lookupbank(query,task_id,chat):
 def isvalid(msg,chat):
     task_id=error(msg,chat)
     if(task_id>0):
-      query = db.session.query(Task).filter_by(id=task_id, chat=chat)        
-      if(lookupbank(query,task_id,chat)): 
-         return True
-      else:
-         return  False    
+      return lookupbank(task_id,chat)     
     else:
-       return False    
+      return False    
 def status(msg,chat, status, print2):
-     task_id=msg
-     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-     task=query.one()     
-     task.status = status 
-     db.session.commit() 
-     send_message(print2.format(task.id, task.name), chat)     
+     if(isvalid(msg,chat)):
+       task_id=int(msg)
+       query = db.session.query(Task).filter_by(id=task_id, chat=chat)
+       task=query.one()     
+       task.status = status 
+       db.session.commit() 
+       send_message(print2.format(task.id, task.name), chat)     
 def statusinform(command,msg,chat):
         numbers=msg.split()
-        print(numbers)
-        for number in numbers:
+        for number in numbers: 
           if command == '/todo':
              status(number,chat,'TODO',"*TODO* task [[{}]] {}")     
           elif command == '/doing':
              status(number,chat,'DOING',"*DOING* task [[{}]] {}")   
           elif command == '/done':
               status(number,chat,'DONE',"*DONE* task [[{}]] {}")    
-              
-def list(chat,msg):
+def printdata(data,id,chat):
+    if (id  in data.keys()):
+      send_message(data[id],chat)                           
+def list(chat,msg,data):
             a = ''
             a += '\U0001F4CB Task List\n'
             query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
@@ -156,15 +161,17 @@ def list(chat,msg):
             a += '\n\U0001F195 *TODO*\n'
             for task in query.all():
                 a += '[[{}]] {}\n'.format(task.id, task.name)
+                printdata(data,task.id,chat)   
             query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
             a += '\n\U000023FA *DOING*\n'
             for task in query.all():
                 a += '[[{}]] {}\n'.format(task.id, task.name)
-            query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
+                printdata(data,task.id,chat)      
+            query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)      
             a += '\n\U00002611 *DONE*\n'
             for task in query.all():
                 a += '[[{}]] {}\n'.format(task.id, task.name)
-
+                printdata(data,task.id,chat)
             send_message(a, chat)              
 def priority(chat,msg):
             text = ''
@@ -261,9 +268,11 @@ def handle_updates(updates):
         chat = message["chat"]["id"]
 
         print(command, msg, chat)
-
+        data={}
         if command == '/new':
             task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
+            data2=getdata(msg)
+            data[task.id]=data2 
             db.session.add(task)
             db.session.commit()
             send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
@@ -277,7 +286,7 @@ def handle_updates(updates):
         elif(command=='/todo' or  command== '/doing' or command== '/done'):
             statusinform(command,msg,chat)
         elif command == '/list':
-             list(chat,msg)
+             list(chat,msg,data)
         elif command == '/dependson':
             text = ''
             if msg != '':
