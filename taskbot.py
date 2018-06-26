@@ -138,7 +138,12 @@ def statusinform(command,msg,chat):
               status(number,chat,'DONE',"*DONE* task [[{}]] {}")    
 def printdata(data,id,chat):
     if (id  in data.keys()):
-      send_message(data[id],chat)                           
+      send_message(data[id],chat) 
+def printafor(a,query,chat,data):
+    for task in query.all():
+                a += '[[{}]] {}\n'.format(task.id, task.name)
+                printdata(data,task.id,chat)
+    return a                             
 def list(chat,msg,data):
             a = ''
             a += '\U0001F4CB Task List\n'
@@ -159,34 +164,22 @@ def list(chat,msg,data):
             a += '\U0001F4DD _Status_\n'
             query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
             a += '\n\U0001F195 *TODO*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)   
+            a=printafor(a,query,chat,data)  
             query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
             a += '\n\U000023FA *DOING*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)      
+            a=printafor(a,query,chat,data)   
             query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)      
             a += '\n\U00002611 *DONE*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)
+            a=printafor(a,query,chat,data) 
             query = db.session.query(Task).filter_by(priority='low', chat=chat).order_by(Task.id)      
             a += '\n\U00002611 *LOW*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)
+            a=printafor(a,query,chat,data) 
             query = db.session.query(Task).filter_by(priority='medium', chat=chat).order_by(Task.id)      
             a += '\n\U000023FA *MEDIUM*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)
+            a=printafor(a,query,chat,data) 
             query = db.session.query(Task).filter_by(priority='high', chat=chat).order_by(Task.id)      
             a += '\n\U000023FA *HIGH*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-                printdata(data,task.id,chat)  
+            a=printafor(a,query,chat,data) 
             send_message(a, chat)              
 def priority(chat,msg):
             text = ''
