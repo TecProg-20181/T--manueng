@@ -172,6 +172,21 @@ def list(chat,msg,data):
             for task in query.all():
                 a += '[[{}]] {}\n'.format(task.id, task.name)
                 printdata(data,task.id,chat)
+            query = db.session.query(Task).filter_by(priority='low', chat=chat).order_by(Task.id)      
+            a += '\n\U00002611 *LOW*\n'
+            for task in query.all():
+                a += '[[{}]] {}\n'.format(task.id, task.name)
+                printdata(data,task.id,chat)
+            query = db.session.query(Task).filter_by(priority='medium', chat=chat).order_by(Task.id)      
+            a += '\n\U000023FA *MEDIUM*\n'
+            for task in query.all():
+                a += '[[{}]] {}\n'.format(task.id, task.name)
+                printdata(data,task.id,chat)
+            query = db.session.query(Task).filter_by(priority='high', chat=chat).order_by(Task.id)      
+            a += '\n\U000023FA *HIGH*\n'
+            for task in query.all():
+                a += '[[{}]] {}\n'.format(task.id, task.name)
+                printdata(data,task.id,chat)  
             send_message(a, chat)              
 def priority(chat,msg):
             text = ''
