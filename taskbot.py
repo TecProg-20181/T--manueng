@@ -113,6 +113,9 @@ def lookupbank(task_id,chat):
     except sqlalchemy.orm.exc.NoResultFound:
       send_message("_404_ Task {} not found x.x".format(task_id), chat)
       return False
+def lookuptask(task_id,chat):
+    query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
+    return query.one()   
 def isvalid(msg,chat):
     task_id=error(msg,chat)
     if(task_id>0):
@@ -214,7 +217,7 @@ def duplicate(chat,msg):
 
              db.session.commit()
              send_message("New task *TODO* [[{}]] {}".format(dtask.id, dtask.name), chat)
-
+      
 def rename(chat,msg):
             text = ''
             if msg != '':
@@ -235,21 +238,89 @@ def rename(chat,msg):
             task.name = text
             db.session.commit()
             send_message("Task {} redefined from {} to {}".format(task_id, old_text, text), chat)
-
+def lookuptaskint(msg,chat):
+      task_id=int(msg)
+      return lookuptask(task_id,chat)
+    
 def delete(chat,msg):
                if(isvalid(msg,chat)):
-                  task_id=int(msg)
-                  query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                  task=query.one()
+                 task_id=int(msg)  
+                 task=lookuptask(task_id,chat)
                else:
                   return
                for t in task.dependencies.split(',')[:-1]:
-                    qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
-                    t = qy.one()
+                    t=lookuptask(t,chat)
                     t.parents = t.parents.replace('{},'.format(task.id), '')
                db.session.delete(task)
                db.session.commit()
-               send_message("Task [[{}]] deleted".format(task_id), chat)       
+               send_message("Task [[{}]] deleted".format(task_id), chat)  
+def abrirno(dependencietree,taskdepinv,taskdepinv2,no,chat):
+    tamanho=len(dependencietree[taskdepinv])
+    print("x466")
+     
+def gerararvoredepen(dependencietree,taskdep_id,task_id,chat):
+    taskdepinv2=str(taskdep_id)
+    taskdepinv=str(task_id)
+    if(taskdepinv2 not in dependencietree[taskdepinv]): 
+       abrirno(dependecietree,taskdepinv,taskdepinv2,no,chat)          
+        
+
+def gerardependencia (task,depid,text,chat,dependencietree):
+    depid = int(text)
+    query = db.session.query(Task).filter_by(id=depid, chat=chat)
+    try:
+     taskdep = query.one()
+     taskdep.parents += str(task.id) + ','
+     if(dependencietree!={}):
+       gerararvoredepen(dependencietree,taskdep.id,task.id,chat)
+     else:
+       dependencietree[str(task.id)]=[str(taskdep.id)] 
+    except sqlalchemy.orm.exc.NoResultFound:
+     send_message("_404_ Task {} not found x.x".format(depid), chat)
+                               
+    deplist = task.dependencies.split(',')
+    return deplist   
+def dependson(chat,msg,dependencietree):
+            text = ''
+            if msg != '':
+                if len(msg.split(' ', 1)) > 1:
+                    text = msg.split(' ', 1)[1]
+                msg = msg.split(' ', 1)[0]
+            deplist=[]
+            if(isvalid(msg,chat)):
+                  task_id=int(msg)
+                  task=lookuptask(task_id,chat)
+                  if text == '':
+                     for i in task.dependencies.split(',')[:-1]:
+                         i = int(i)
+                         t=lookuptask(i,chat)
+                         t.parents = t.parents.replace('{},'.format(task.id), '')
+
+                     task.dependencies = ''
+                     send_message("Dependencies removed from task {}".format(task_id), chat)
+                  else:
+                     for depid in text.split(' '):
+                        if not depid.isdigit():
+                            send_message("All dependencies ids must be numeric, and not {}".format(depid), chat)
+                        else:
+                            dedplist=gerardependencia(task,depid,text,chat,dependencietree)
+                            if str(depid) not in deplist:
+                                task.dependencies += str(depid) + ','
+
+                  db.session.commit()
+                  send_message("Task {} dependencies up to date".format(task_id), chat)
+            else:
+              return 
+def new(msg,chat,data):
+    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
+    data2=getdata(msg)
+    data[task.id]=data2 
+    db.session.add(task)
+    db.session.commit()
+    send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
+    dependencietree={str(task.id):[]}   
+    a=[task,data2,dependencietree]
+    return a  
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
@@ -266,17 +337,16 @@ def handle_updates(updates):
             msg = message["text"].split(" ", 1)[1].strip()
 
         chat = message["chat"]["id"]
-
+        dependencietree={}
         print(command, msg, chat)
         data={}
         if command == '/new':
-            task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
-            data2=getdata(msg)
-            data[task.id]=data2 
-            db.session.add(task)
-            db.session.commit()
-            send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
-
+           a=new(msg,chat,data)
+           data2=a[1]
+           task=a[0]
+           dependencietree=a[2]  
+        elif command == '/dependson':
+           dependson(chat,msg,dependencietree)
         elif command == '/rename':
             rename(chat,msg)
         elif command == '/duplicate':
@@ -287,46 +357,6 @@ def handle_updates(updates):
             statusinform(command,msg,chat)
         elif command == '/list':
              list(chat,msg,data)
-        elif command == '/dependson':
-            text = ''
-            if msg != '':
-                if len(msg.split(' ', 1)) > 1:
-                    text = msg.split(' ', 1)[1]
-                msg = msg.split(' ', 1)[0]
-
-            if(isvalid(msg,chat)):
-
-                  if text == '':
-                     for i in task.dependencies.split(',')[:-1]:
-                         i = int(i)
-                         q = db.session.query(Task).filter_by(id=i, chat=chat)
-                         t = q.one()
-                         t.parents = t.parents.replace('{},'.format(task.id), '')
-
-                     task.dependencies = ''
-                     send_message("Dependencies removed from task {}".format(task_id), chat)
-                  else:
-                     for depid in text.split(' '):
-                        if not depid.isdigit():
-                            send_message("All dependencies ids must be numeric, and not {}".format(depid), chat)
-                        else:
-                            depid = int(depid)
-                            query = db.session.query(Task).filter_by(id=depid, chat=chat)
-                            try:
-                                taskdep = query.one()
-                                taskdep.parents += str(task.id) + ','
-                            except sqlalchemy.orm.exc.NoResultFound:
-                                send_message("_404_ Task {} not found x.x".format(depid), chat)
-                                continue
-
-                            deplist = task.dependencies.split(',')
-                            if str(depid) not in deplist:
-                                task.dependencies += str(depid) + ','
-
-                  db.session.commit()
-                  send_message("Task {} dependencies up to date".format(task_id), chat)
-            else:
-              return 
         elif command == '/priority':
            priority(chat,msg)
         elif command == '/start':
