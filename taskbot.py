@@ -105,6 +105,11 @@ def error(msg,chat):
     else:
        task_id = int(msg)
     return task_id;
+def lookupbankt(msg,chat):
+     task_id=int(msg)
+     query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
+     task = query.one()
+     return task
 def lookupbank(task_id,chat):
     try:
       query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
@@ -254,7 +259,12 @@ def delete(chat,msg):
                     t.parents = t.parents.replace('{},'.format(task.id), '')
                db.session.delete(task)
                db.session.commit()
-               send_message("Task [[{}]] deleted".format(task_id), chat)       
+               send_message("Task [[{}]] deleted".format(task_id), chat)  
+def verificano(taskx,tasky):
+      if(str(taskx.id) in tasky.parents.split(',')[:-1]):
+         return False
+      else:
+         return True         
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
@@ -300,7 +310,8 @@ def handle_updates(updates):
                 msg = msg.split(' ', 1)[0]
 
             if(isvalid(msg,chat)):
-
+                  task=lookupbankt(msg,chat)
+                  task_id=task.id
                   if text == '':
                      for i in task.dependencies.split(',')[:-1]:
                          i = int(i)
@@ -319,7 +330,8 @@ def handle_updates(updates):
                             query = db.session.query(Task).filter_by(id=depid, chat=chat)
                             try:
                                 taskdep = query.one()
-                                taskdep.parents += str(task.id) + ','
+                                if(verificano(taskdep,task)):
+                                  taskdep.parents += str(task.id) + ','
                             except sqlalchemy.orm.exc.NoResultFound:
                                 send_message("_404_ Task {} not found x.x".format(depid), chat)
                                 continue
