@@ -35,12 +35,22 @@ HELP = """
  /help
 """
 def getdata(msg):
-    parts=msg.split() 
-    if(parts!=[]):
-      data=parts[0]
+    parts=msg.split()
+    data="100"  
+    if(validadata(parts)):
+      return parts
     else:
-      data="0"
-    return data 
+       return data
+def validadata(parts):
+    if(int(parts[0])>0  and int(parts[0])<30):
+      if(len(parts)>=2):
+        if(int(parts[1])>0 and int(parts[1])<=12):
+         if(len(parts)>=3):
+           if(int(parts[2])>=2018):
+              return True
+    return False
+       
+     
 def get_url(url):
     response = requests.get(url)
     content = response.content.decode("utf8")
@@ -105,6 +115,11 @@ def error(msg,chat):
     else:
        task_id = int(msg)
     return task_id;
+
+def lookupbankt(task_id,chat):
+      query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
+      task = query.one()
+      return task  
 def lookupbank(task_id,chat):
     try:
       query = db.session.query(Task).filter_by(id=task_id, chat=chat) 
@@ -277,6 +292,7 @@ def handle_updates(updates):
         if command == '/new':
             task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
             data2=getdata(msg)
+            print(data2)
             data[task.id]=data2 
             db.session.add(task)
             db.session.commit()
@@ -300,7 +316,8 @@ def handle_updates(updates):
                 msg = msg.split(' ', 1)[0]
 
             if(isvalid(msg,chat)):
-
+                  task_id=int(msg)  
+                  task=lookupbankt(task_id,chat)      
                   if text == '':
                      for i in task.dependencies.split(',')[:-1]:
                          i = int(i)
